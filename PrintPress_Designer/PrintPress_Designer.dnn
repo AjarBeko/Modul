@@ -1,0 +1,100 @@
+<dotnetnuke type="Package" version="5.0">
+  <packages>
+    <package name="PrintPress_Designer" type="Module" version="00.00.01">
+      <friendlyName>PrintPress_Designer</friendlyName>
+      <description>PrintPress_Designer</description>
+      <iconFile>~/Icons/Sigma/Software_32X32_Standard.png</iconFile>
+      <owner>
+        <name>ITElite</name>
+        <organization>ITElite</organization>
+        <url>https://dnndev.me/</url>
+        <email>patrik.simon@stud.uni-corvinus.hu</email>
+      </owner>
+      <license src="License.txt"></license>
+      <releaseNotes src="ReleaseNotes.txt"></releaseNotes>
+      <dependencies>
+        <dependency type="CoreVersion">09.08.00</dependency>
+      </dependencies>
+      <components>
+        <component type="Script">
+          <scripts>
+            <basePath>DesktopModules\MVC\PrintPress_Designer</basePath>
+            <script type="Install">
+              <path>Providers\DataProviders\SqlDataProvider</path>
+              <name>00.00.01.SqlDataProvider</name>
+              <version>00.00.01</version>
+            </script>
+            <script type="UnInstall">
+              <path>Providers\DataProviders\SqlDataProvider</path>
+              <name>Uninstall.SqlDataProvider</name>
+              <version>00.00.01</version>
+            </script>
+          </scripts>
+        </component>
+        <component type="ResourceFile">
+          <resourceFiles>
+            <basePath>DesktopModules/MVC/PrintPress_Designer</basePath>
+            <resourceFile>
+              <name>Resources.zip</name>
+            </resourceFile>
+          </resourceFiles>
+        </component>
+        <component type="Module">
+          <desktopModule>
+            <moduleName>PrintPress_Designer</moduleName>
+            <foldername>PrintPress_Designer</foldername>
+            <businessControllerClass>PrintPress_DesignerPrintPress_Designer.Components.FeatureController</businessControllerClass>
+            <supportedFeatures />
+            <moduleDefinitions>
+              <moduleDefinition>
+                <friendlyName>PrintPress_Designer</friendlyName>
+                <defaultCacheTime>0</defaultCacheTime>
+                <moduleControls>
+                  <moduleControl>
+                    <controlKey />
+                    <controlSrc>PrintPress_DesignerPrintPress_Designer.Controllers/Item/Index.mvc</controlSrc>
+                    <supportsPartialRendering>False</supportsPartialRendering>
+                    <controlTitle />
+                    <controlType>View</controlType>
+                    <iconFile />
+                    <helpUrl />
+                    <viewOrder>0</viewOrder>
+                  </moduleControl>
+                  <moduleControl>
+                    <controlKey>Edit</controlKey>
+                    <controlSrc>PrintPress_DesignerPrintPress_Designer.Controllers/Item/Edit.mvc</controlSrc>
+                    <supportsPartialRendering>False</supportsPartialRendering>
+                    <controlTitle>Edit Content</controlTitle>
+                    <controlType>Edit</controlType>
+                    <iconFile />
+                    <helpUrl />
+                    <viewOrder>0</viewOrder>
+                    <supportsPopUps>True</supportsPopUps>
+                  </moduleControl>
+                  <moduleControl>
+                    <controlKey>Settings</controlKey>
+                    <controlSrc>PrintPress_DesignerPrintPress_Designer.Controllers/Settings/Settings.mvc</controlSrc>
+                    <supportsPartialRendering>False</supportsPartialRendering>
+                    <controlTitle>PrintPress_Designer Settings</controlTitle>
+                    <controlType>Edit</controlType>
+                    <iconFile />
+                    <helpUrl />
+                    <viewOrder>0</viewOrder>
+                  </moduleControl>
+                </moduleControls>
+              </moduleDefinition>
+            </moduleDefinitions>
+          </desktopModule>
+        </component>
+        <component type="Assembly">
+          <assemblies>
+            <assembly>
+              <name>PrintPress_Designer.dll</name>
+              <path>bin</path>
+            </assembly>
+          </assemblies>
+        </component>
+      </components>
+    </package>
+  </packages>
+</dotnetnuke>
