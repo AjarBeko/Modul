@@ -1,0 +1,70 @@
+﻿@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<IEnumerable<PixelPress_DesignerPixelPress_Designer.Models.Item>>
+
+@using System.Text.RegularExpressions
+@using DotNetNuke.Web.Mvc.Helpers
+
+
+<script>
+    function randomizalj() {
+        //let randomszam = Math.random()
+        document.getElementById("designerteszt").innerHTML = @randomszam2; //fúúúúúúú ez túl bonyolult. controller meg action kell?
+    }
+</script>
+
+@functions{
+    public double @randomszam2 = 10;
+    public void randomizalj2()
+    {
+        Random rand = new Random();
+        @randomszam2 = rand.NextDouble();
+        return;
+    }
+    public void Timer1_Tick(object sender, EventArgs e)
+    {
+        randomizalj2();
+    }
+}
+
+<div id="Items-@Dnn.ModuleContext.ModuleId">
+    @if (Model.Count() == 0)
+    {
+        <p>@Dnn.LocalizeString("NoItems")</p>
+
+        Timer Timer1 = new Timer();
+        Timer1.Interval = 1000;
+        Timer1.Enabled = true;
+        Timer1.Tick += Timer1_Tick;
+
+        <button type="button" onclick="randomizalj()">Randomizálj!</button>
+
+        <a id="designerteszt">a</a>
+
+
+        for (int i = 0; i < 5; i++)
+        {
+            <p>@Model +@i</p> //teszteléshez!
+        }
+        ;
+    }
+    else
+    {
+        <ul class="tm_tl">
+            @foreach (var item in Model)
+            {
+                <li class="tm_t">
+                    <h3>@item.ItemName</h3>
+                    <div class="tm_td">@item.ItemDescription</div>
+                    @{
+                        if (Dnn.ModuleContext.IsEditable)
+                        {
+                            <div>
+                                <a href="@Url.Action("Edit", "Item", new {ctl = "Edit", itemId = item.ItemId})">@Dnn.LocalizeString("EditItem")</a>
+                                <a href="@Url.Action("Delete", "Item", new {itemId = item.ItemId})">@Dnn.LocalizeString("DeleteItem")</a>
+                            </div>
+                        }
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
