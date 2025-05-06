@@ -19,6 +19,24 @@ using DotNetNuke.Web.Mvc.Framework.Controllers;
 using DotNetNuke.Web.Mvc.Framework.ActionFilters;
 using DotNetNuke.Entities.Users;
 using DotNetNuke.Framework.JavaScriptLibraries;
+using DotNetNuke.Framework;
+using DotNetNuke.UI.Utilities;
+using DotNetNuke.Web.Api;
+using Hotcakes.CommerceDTO.v1;
+using Hotcakes.CommerceDTO.v1.Client;
+using Hotcakes.CommerceDTO.v1.Contacts;
+using Hotcakes.CommerceDTO.v1.Orders;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Data;
+using DotNetNuke.Web.Mvc.Helpers;
+using Hotcakes.CommerceDTO.v1.Catalog;
+using System.Web.Http.Results;
+using System.Web.Helpers;
+using Hotcakes.Web;
+using DotNetNuke.Common.Utilities;
+using System.Data.SqlTypes;
+using Hotcakes.Commerce.Dnn;
 
 namespace PixelPress_DesignerPixelPress_Designer.Controllers
 {
@@ -31,7 +49,7 @@ namespace PixelPress_DesignerPixelPress_Designer.Controllers
             ItemManager.Instance.DeleteItem(itemId, ModuleContext.ModuleId);
             return RedirectToDefaultRoute();
         }
-         
+
         public ActionResult Edit(int itemId = -1)
         {
             DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.DnnPlugins);
@@ -46,9 +64,57 @@ namespace PixelPress_DesignerPixelPress_Designer.Controllers
                  ? new Item { ModuleId = ModuleContext.ModuleId }
                  : ItemManager.Instance.GetItem(itemId, ModuleContext.ModuleId);
 
-            return View(item);
+            return View(item); //itt eredetileg az volt hogy View(item)
         }
 
+        [HttpGet]
+        [AllowAnonymous]
+        public string GetApiKey()
+        {
+            //string key = "1-d820ce2a-9612-4001-95e5-187fdca8497e"; //saját dnndev.me-s
+            string key = "1-35939070-0c15-468a-b98c-8da71a3e96ca"; //rendfejl10000 "fő" api
+            return key;
+        }
+
+        public string GetProducts()
+        {
+            //string url = "http://dnndev.me";
+            string url = "http://rendfejl10000.northeurope.cloudapp.azure.com:8080/";
+
+            //string key = "1-d820ce2a-9612-4001-95e5-187fdca8497e"; //saját dnndev.me-s
+            string key = "1-35939070-0c15-468a-b98c-8da71a3e96ca"; //rendfejl10000 "fő" api
+
+            Api proxy = new Api(url, key);
+
+            ApiResponse<List<ProductDTO>> response = proxy.ProductsFindAll();
+            var json = JsonConvert.SerializeObject(response);
+            return json;
+            //return Json(json, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
+        public ApiResponse<ProductDTO> CreateProduct(string ProductName, string Sku, decimal ListPrice, decimal SitePrice, string LongDescription, bool IsSearchable)
+        {
+            //string url = "http://dnndev.me";
+            string url = "http://rendfejl10000.northeurope.cloudapp.azure.com:8080/";
+            
+            //string key = "1-d820ce2a-9612-4001-95e5-187fdca8497e"; //saját dnndev.me-s
+            string key = "1-35939070-0c15-468a-b98c-8da71a3e96ca"; //rendfejl10000 "fő" api
+
+            Api proxy = new Api(url, key);
+
+            var product = new ProductDTO();
+            product.ProductName = ProductName;
+            product.Sku = Sku;
+            product.ListPrice = ListPrice;
+            product.SitePrice = SitePrice;
+            product.InventoryMode = ProductInventoryModeDTO.AlwayInStock;
+            product.LongDescription = LongDescription;
+            product.IsSearchable = IsSearchable;
+            ApiResponse<ProductDTO> response = proxy.ProductsCreate(product, null);
+            return response;
+        }
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
         public ActionResult Edit(Item item)
