@@ -1,0 +1,844 @@
+﻿@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<IEnumerable<PixelPress_DesignerPixelPress_Designer.Models.Item>>
+
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using System.Text.RegularExpressions
+@using DotNetNuke.Web.Mvc.Helpers
+@using System.Linq;
+@using DotNetNuke.Web.Api
+@using PixelPress_DesignerPixelPress_Designer.Models;
+@using DotNetNuke.Services.FileSystem
+@using Hotcakes.Commerce.Dnn
+@using Hotcakes.CommerceDTO.v1;
+@using Hotcakes.CommerceDTO.v1.Client;
+@using Hotcakes.CommerceDTO.v1.Catalog;
+@using DotNetNuke.Web.Mvc.Framework.Controllers
+
+
+<div id="Items-@Dnn.ModuleContext.ModuleId">
+    @{
+        //szia
+        ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/module_pixelpress_designer/PixelPress_Designer/Scripts/html2canvas.min.js");
+        //source: https://html2canvas.hertzen.com/
+        ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/module_pixelpress_designer/PixelPress_Designer/Scripts/qrcode.min.js");
+        //source: https://github.com/davidshimjs/qrcodejs
+        ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/module_pixelpress_designer/PixelPress_Designer/Scripts/confetti.browser.min.js");
+        //source: https://www.kirilv.com/canvas-confetti/
+        ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/module_pixelpress_designer/PixelPress_Designer/Scripts/Base64Binary.js");
+        //source: https://gist.github.com/htchaan/108b7aa6b71eb03e38019e64450ea095#file-base64binary-js
+        //Simple Javascript and CSS Draggable and Resizable div: https://codepen.io/jkasun/pen/QrLjXP
+        //Pure Css Animated Background: https://codepen.io/mohaiman/pen/MQqMyo
+    }
+    
+    <div id="overlay">
+        <div id="overlay_whitebox">
+            <img id="overlay_checkmark" src="" /><a id="overlay_closeButton" onclick="overlayOff()"><img id="overlay_closeButtonIcon" src="" /></a>
+            <a_sima style="font-size: 32px; padding: 15px;">Egyedi terméked elkészült!</a_sima>
+            <div id="overlay_whitebox_container">
+                <div>
+                    <img id="finalProductImage" />
+                    <br />
+                    <a_sima style="font-size: 24px;">Új cikkszám: </a_sima><a_sima id="newProductSku" style="font-size: 24px;"></a_sima>
+                </div>
+                <div class="verticalLine"></div>
+                <div>
+                    <a_sima style="font-size: 24px;">Termékjellemzők:</a_sima>
+                    <br />
+                    <a_sima id="newProductDescription"></a_sima>
+
+                    <div class="flex-container">
+                        <div>
+                            <br /><!-- VIEW PRODUCT BUTTON -->
+                            <button type="button" class="moduleLabel moduleButton" id="module_viewProductButton">
+                                <img src="https://img.icons8.com/?size=20&id=hUqP035cA2Bd&format=png&color=000000" />
+                                <span style="margin-left:12px"><strong>Megtekintés</strong></span>
+                            </button>
+
+                            <br /><!-- ADD TO CART BUTTON -->
+                            <button type="button" class="moduleLabel moduleButton" id="module_addToCartButton">
+                                <img src="https://img.icons8.com/?size=20&id=UXTY2trssuEM&format=png&color=000000" />
+                                <span style="margin-left:12px">Kosárba</span>
+                            </button>
+
+                            <br /> <!-- SHARE BUTTON -->
+                            <button type="button" class="moduleLabel moduleButton" id="module_shareButton">
+                                <img src="https://img.icons8.com/?size=20&id=eVzJ4kKqXKDy&format=png&color=000000" />
+                                <span style="margin-left:12px">Megosztás</span>
+                            </button>
+                            <br />
+                        </div>
+
+                        <div>
+                            <div id="qrcode"></div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main_container">
+        <ul class="circles">
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+        </ul>
+        <h4>PixelPress Designer</h4>
+        @{
+            string apiKey = ((PixelPress_DesignerPixelPress_Designer.Controllers.ItemController)this.ViewContext.Controller).GetApiKey();
+            var apiProducts = ((PixelPress_DesignerPixelPress_Designer.Controllers.ItemController)this.ViewContext.Controller).GetProducts();
+            //var apilegjobb = ((PixelPress_DesignerPixelPress_Designer.Controllers.ItemController)this.ViewContext.Controller).CreateProduct("productname", "sku_hsdsagds", 105, 105, "valamidescription", true);
+        }
+
+        <!-- HELP -->
+        <div class="verticalLine verticalLine2" style="float: left"></div>
+        <h5>Tervezd meg saját ruháidat, kiegészítőidet!</h5>
+        <h6>Használati útmutató:</h6>
+
+        <ol>
+            <li>
+                <strong>Termék kiválasztása:</strong> Ha még nincs kiválasztott termék, akkor válassz ki egyet a legördülő listából.
+            </li>
+            <li>
+                <strong>Képek feltöltése:</strong> Ha saját képeket vagy logókat szeretnél használni, úgy használd a "Képek feltöltése" lehetőséget
+                <i>(legfeljebb 5db-ot).</i>
+            </li>
+            <li>
+                <strong>Szöveg hozzáadása:</strong> Írj be egy szöveget amit a "Szöveg hozzáadása" gombbal később kiválaszthatsz
+                <i>(legfeljebb 5db-ot).</i>
+                <ul>
+                    <li>Képet vagy szöveget az "✘" jellel törölhetsz a tervezőből.
+                </ul>
+            </li>
+            <li>
+                <strong>Véglegesítés:</strong> Miután elkészítetted a tervezést, kattints a "Véglegesítés" gombra.
+            </li>
+            <li>
+                <strong>Megosztás:</strong> A véglegesített tervhez a "Megosztás" gombbal QR-kódot készíthetsz.
+            </li>
+        </ol>
+
+        <div class="flex-container">
+            <div id="designerWindow">
+                <div id="imageContainer">
+                    <div class="popup"><div class="popup-header"><img class="addedImage" /></div></div>
+                    <div class="popup"><div class="popup-header"><img class="addedImage" /></div></div>
+                    <div class="popup"><div class="popup-header"><img class="addedImage" /></div></div>
+                    <div class="popup"><div class="popup-header"><img class="addedImage" /></div></div>
+                    <div class="popup"><div class="popup-header"><img class="addedImage" /></div></div>
+                    <div class="popup"><div class="popup-header" id="addedText1"></div></div>
+                    <div class="popup"><div class="popup-header" id="addedText2"></div></div>
+                    <div class="popup"><div class="popup-header" id="addedText3"></div></div>
+                    <div class="popup"><div class="popup-header" id="addedText4"></div></div>
+                    <div class="popup"><div class="popup-header" id="addedText5"></div></div>
+                    <img id="designerImage" />
+                </div>
+            </div>
+            <div>
+                <!-- SELECT PRODUCT -->
+                <button type="button" class="moduleLabel" id="module_selectProductButton" disabled>Termék kiválasztása</button>
+                <select id="productComboBox" style="font-family: 'Calibri'" onchange="loadProduct()">
+                </select>
+
+                <br /> <!-- PRODUCT SKU -->
+                <button type="button" class="moduleLabel" id="module_selectedProductSKUButton" disabled>Termék cikkszáma:</button>
+                <input type="text" id="selectedProductSKUTextBox" placeholder="üres" disabled />
+
+                <br />
+                <br /> <!-- ADD TEXT BUTTON -->
+                <button type="button" class="moduleLabel moduleButton" id="module_addTextButton" onclick="checkSumText()">
+                    <img src="https://img.icons8.com/?size=20&id=99509&format=png&color=000000" />
+                    <span style="margin-left:12px">Szöveg hozzáadása</span>
+                </button>
+
+                <!-- INPUT TEXT FIELD -->
+                <input type="text" id="textField" placeholder="Írj be egy szöveget! (max. 30 karakter)" maxlength="30" />
+
+                <br /> <!-- UPLOAD IMAGE BUTTON -->
+                <input type="file" id="imgupload" style="display:none" oninput="checkSumFiles()" accept="image/*" multiple />
+                <button type="button" class="moduleLabel moduleButton" id="module_uploadButton">
+                    <img src="https://img.icons8.com/?size=20&id=cDnEsiNX3cmm&format=png&color=000000" />
+                    <span style="margin-left:12px">Képek feltöltése</span>
+                </button>
+
+                <br />
+                <br /><!-- CONFIRM BUTTON -->
+                <button type="button" class="moduleLabel moduleButton" id="module_confirmButton">
+                    <img src="https://img.icons8.com/?size=20&id=7690&format=png&color=000000" />
+                    <span style="margin-left:12px"><strong>Véglegesítés</strong></span>
+                </button>
+
+            </div>
+
+            <div class="verticalLine"></div>
+            <div>
+                <!-- ITEMS ADDED BUTTON -->
+                <button type="button" class="moduleLabel" id="module_itemsAddedButton" disabled>Hozzáadott képek:</button>
+                @for (int i = 0; i < 5; i++)
+                {
+                    <br />
+                    <img class="uploadedFileImage" src="" style="visibility: hidden" />
+                    <a_sima class="uploadedFileName"></a_sima>
+                    <a_sima class="deleteFileX"> ✘</a_sima>
+                }
+            </div>
+
+            <div class="verticalLine"></div>
+            <div>
+                <button type="button" class="moduleLabel" id="module_itemsAddedButton" disabled>Hozzáadott szövegek:</button>
+                @for (int i = 0; i < 5; i++)
+                {
+                    <br />
+                    <a_sima class="uploadedTextName"></a_sima>
+                    <a_sima class="deleteTextX"> ✘</a_sima>
+                    <input type="color" class="fontColor" />
+                    <input type="number" class="fontSize" min="6" max="48" value="12">
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+    function extractSkuFromUrl() {
+        let keyword = "/Designer/";
+        let keywordIndex = decodeURI(document.baseURI).indexOf(keyword); //ettől az indextől kezdődik a keyword string
+        if (keywordIndex === -1) {
+            return null;
+        }
+        let skuPart = decodeURI(document.baseURI).substring(keywordIndex + keyword.length); //csak az ez utániak érdekelnek
+        let sku = skuPart.split("/")[0]; //ha van több per jel is is, akkor csak az eleje maradjon meg
+        return sku;
+    };
+
+    function extractBaseUrl() {
+        let slashCount = 0;
+        for (let i = 0; i < decodeURI(document.baseURI).length; i++) {
+            if (decodeURI(document.baseURI)[i] === "/") {
+                slashCount++;
+            }
+            if (slashCount === 3) {
+                return decodeURI(document.baseURI).substring(0, i + 1);
+            }
+        }
+        return null;
+    }
+
+    function confirmConfetti() {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+    }
+    let newImg = "";
+    let newImgBlob = "";
+    function createSnapshot() {
+        //document.getElementById("main_container").setAttribute("style", "filter: none; -webkit-filter: none; background-color: rgba(0,0,0,0);");
+        //html2canvas(document.getElementById("imageContainer")).then(function (canvas) { document.body.appendChild(canvas); console.log(canvas); });
+        html2canvas(document.getElementById("imageContainer")).then(function (canvas) {
+            canvas.toBlob((blob) => {
+                newImgBlob = blob;
+                newImg = document.createElement("img");
+                let url = URL.createObjectURL(blob);
+                newImg.src = url;
+                document.getElementById("finalProductImage").src = newImg.src;
+            });
+
+        });
+    }
+
+    document.getElementById("module_uploadButton").addEventListener("click", () =>
+    {
+        document.getElementById("imgupload").click();
+    });
+
+    document.getElementById("textField").addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+            checkSumText();
+        }
+    });
+
+    document.getElementById("module_shareButton").addEventListener("click", () => {
+        document.getElementById("qrcode").innerHTML = ''; //törlés
+        new QRCode(document.getElementById("qrcode"), {
+            width: 200,
+            height: 200,
+            text: baseURL + "HotcakesStore/Product-Viewer/designterv-" + ujtermek.Content.Sku //ide jön majd a kreált productnak az elérési linkje
+        });
+        document.getElementById("qrcode").style.visibility = "visible";
+        document.getElementById("qrcode").style.filter = "blur(0px)";
+        document.getElementById("qrcode").style.opacity = 1;
+        document.getElementById("qrcode").style.transition = "filter 1s, opacity 1s";
+    });
+
+    document.getElementById("module_confirmButton").addEventListener("click", () =>
+    {
+        confirmConfetti();
+        createSnapshot();
+        createProduct();
+        var vanujtermek = setInterval(() => {
+            if (ujtermek) { //csak akkor fusson le ha létrejött az új termék (amit 100ms-onként ellenőriz)
+                document.getElementById("main_container").style.filter = "blur(5px)";
+                document.getElementById("main_container").style.transition = "filter 2s";
+                overlayOn();
+                document.getElementById("overlay").style.visibility = "visible";
+                document.getElementById("overlay_whitebox").style.visibility = "visible";
+                document.getElementById("overlay").style.opacity = 1;
+                document.getElementById("overlay_whitebox").style.opacity = 1;
+                document.getElementById("overlay_whitebox").style.filter = "blur(0px)";
+                document.getElementById("overlay").style.transition = "filter 1s 1s, opacity 1s 1s";
+                document.getElementById("overlay_whitebox").style.transition = "filter 0.5s 2s, opacity 1s 1s";
+                document.getElementById("overlay_checkmark").src = baseURL + "/Portals/0/Images/icons8-checkmark.svg";
+                document.getElementById("overlay_closeButtonIcon").src = baseURL + "/Portals/0/Images/close-svgrepo-com.svg";
+                document.getElementById("newProductSku").innerHTML = ujtermek.Content.Sku;
+                document.getElementById("newProductDescription").innerHTML = longDescriptionString;
+                console.log(ujtermek['Content']['Bvin']);
+                setTimeout(uploadPHP, 2000); //késleltetve stabilabb, és az uploadPHP() helyett valamiért elég zárójel nélkül is az uploadPHP pedig ez függvény.. namind1
+                assignProductOption();
+                clearInterval(vanujtermek)
+            }
+        }, 100);
+    });
+
+    document.getElementById("module_viewProductButton").addEventListener("click", () => {
+        var redirectWindow = window.open(baseURL + "HotcakesStore/Product-Viewer/designterv-" + ujtermek.Content.Sku);
+        redirectWindow.location;
+    });
+
+    document.getElementById("module_addToCartButton").addEventListener("click", () => {
+        var redirectWindow = window.open(baseURL + "HotcakesStore/Cart?AddSku=" + ujtermek.Content.Sku + "&AddSkuQty=1", '_blank');
+        redirectWindow.location;
+    });
+
+
+    function checkSumFiles() {
+        if ((document.getElementById("imgupload").files.length + fileArray.length) > 5) {
+            alert("Legfeljebb 5 kép feltöltésére van lehetőség!")
+        }
+        else {
+            displayFileName();
+        }
+    }
+
+    function checkSumText() {
+        if (document.getElementById("textField").value == '') {
+            alert("Adj hozzá egy szöveget a jobb oldali mezőbe!")
+            return;
+        }
+        if (textArray.length >= 5) {
+            alert("Legfeljebb 5 szöveg hozzáadására van lehetőség!")
+            return;
+        }
+        else {
+            displayTextName();
+        }
+    }
+
+    function displayFileName() { //fájlnév és méret kiíratás
+        if (document.getElementById("imgupload").files.length > 0) { //de csak akkor ha fel lett töltve fájl
+
+            for (var i = 0; i < document.getElementById("imgupload").files.length; i++) {
+                fileArray.push(document.getElementById("imgupload").files[i])
+            }
+            document.getElementById("imgupload").value = '' //azért állítom be üresre, hogy -ugyanazt- a fájlt is fel lehessen tölteni egymás után többször is
+            rearrangeImages();
+        }
+    }
+
+    function displayTextName() {
+        textArray.push(document.getElementById("textField").value)
+        document.getElementById("textField").value = ''
+        rearrangeTexts();
+    }
+
+    //de hogy ez miért nem működik for ciklussal, fogalmam nincs.. :
+    // IMAGES
+    document.getElementsByClassName("deleteFileX")[0].addEventListener("click", () => {
+        fileArray.splice([0], 1);
+        rearrangeImages();
+    })
+    document.getElementsByClassName("deleteFileX")[1].addEventListener("click", () => {
+        fileArray.splice([1], 1);
+        rearrangeImages();
+    })
+    document.getElementsByClassName("deleteFileX")[2].addEventListener("click", () => {
+        fileArray.splice([2], 1);
+        rearrangeImages();
+    })
+    document.getElementsByClassName("deleteFileX")[3].addEventListener("click", () => {
+        fileArray.splice([3], 1);
+        rearrangeImages();
+    })
+    document.getElementsByClassName("deleteFileX")[4].addEventListener("click", () => {
+        fileArray.splice([4], 1);
+        rearrangeImages();
+    })
+
+    // TEXTS
+    document.getElementsByClassName("deleteTextX")[0].addEventListener("click", () => {
+        textArray.splice([0], 1);
+        rearrangeTexts();
+    })
+    document.getElementsByClassName("deleteTextX")[1].addEventListener("click", () => {
+        textArray.splice([1], 1);
+        rearrangeTexts();
+    })
+    document.getElementsByClassName("deleteTextX")[2].addEventListener("click", () => {
+        textArray.splice([2], 1);
+        rearrangeTexts();
+    })
+    document.getElementsByClassName("deleteTextX")[3].addEventListener("click", () => {
+        textArray.splice([3], 1);
+        rearrangeTexts();
+    })
+    document.getElementsByClassName("deleteTextX")[4].addEventListener("click", () => {
+        textArray.splice([4], 1);
+        rearrangeTexts();
+    })
+
+    // TEXT COLORS
+    document.getElementsByClassName("fontColor")[0].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[5].style.color = document.getElementsByClassName("fontColor")[0].value;
+    })
+    document.getElementsByClassName("fontColor")[1].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[6].style.color = document.getElementsByClassName("fontColor")[1].value;
+    })
+    document.getElementsByClassName("fontColor")[2].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[7].style.color = document.getElementsByClassName("fontColor")[2].value;
+    })
+    document.getElementsByClassName("fontColor")[3].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[8].style.color = document.getElementsByClassName("fontColor")[3].value;
+    })
+    document.getElementsByClassName("fontColor")[4].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[9].style.color = document.getElementsByClassName("fontColor")[4].value;
+    })
+
+    // TEXT SIZES
+    document.getElementsByClassName("fontSize")[0].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[5].style.fontSize = document.getElementsByClassName("fontSize")[0].value + "pt"
+    })
+    document.getElementsByClassName("fontSize")[1].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[6].style.fontSize = document.getElementsByClassName("fontSize")[1].value + "pt"
+    })
+    document.getElementsByClassName("fontSize")[2].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[7].style.fontSize = document.getElementsByClassName("fontSize")[2].value + "pt"
+    })
+    document.getElementsByClassName("fontSize")[3].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[8].style.fontSize = document.getElementsByClassName("fontSize")[3].value + "pt"
+    })
+    document.getElementsByClassName("fontSize")[4].addEventListener("input", () => {
+        document.getElementsByClassName("popup-header")[9].style.fontSize = document.getElementsByClassName("fontSize")[4].value + "pt"
+    })
+
+
+
+
+    function rearrangeImages() {
+        for (let i = 0; i < fileArray.length; i++) {
+            document.getElementsByClassName("uploadedFileName")[i].innerHTML = fileArray[i].name + ", méret: " + Math.round(fileArray[i].size / 1000000 * 100) / 100 + " MB"
+            document.getElementsByClassName("uploadedFileName")[i].style.display = "contents";
+            document.getElementsByClassName("deleteFileX")[i].style.display = "contents";
+            document.getElementsByClassName("uploadedFileImage")[i].src = URL.createObjectURL(fileArray[i])
+            document.getElementsByClassName("uploadedFileImage")[i].style.visibility = "visible";
+            document.getElementsByClassName("addedImage")[i].src = document.getElementsByClassName("uploadedFileImage")[i].src
+
+        }
+        for (var i = fileArray.length; i < 5; i++) {
+            document.getElementsByClassName("uploadedFileName")[i].style.display = "none";
+            document.getElementsByClassName("deleteFileX")[i].style.display = "none";
+            document.getElementsByClassName("uploadedFileImage")[i].style.visibility = "hidden";
+            document.getElementsByClassName("addedImage")[i].src = "";
+        }
+    }
+
+    function rearrangeTexts() {
+        for (let i = 0; i < textArray.length; i++) {
+            document.getElementsByClassName("uploadedTextName")[i].innerHTML = textArray[i]
+            document.getElementsByClassName("uploadedTextName")[i].style.display = "contents";
+            document.getElementsByClassName("deleteTextX")[i].style.display = "contents";
+            document.getElementsByClassName("popup-header")[i + 5].innerHTML = textArray[i];
+            document.getElementsByClassName("fontColor")[i].style.visibility = "visible";
+            document.getElementsByClassName("fontSize")[i].style.visibility = "visible";
+        }
+        for (var i = textArray.length; i < 5; i++) {
+            document.getElementsByClassName("uploadedTextName")[i].style.display = "none";
+            document.getElementsByClassName("deleteTextX")[i].style.display = "none";
+            document.getElementsByClassName("popup-header")[i + 5].innerHTML = "";
+            document.getElementsByClassName("fontColor")[i].style.visibility = "hidden";
+            document.getElementsByClassName("fontSize")[i].style.visibility = "hidden";
+        }
+    }
+
+    let apiPath = "/DesktopModules/Hotcakes/API/rest/v1/";
+    let imagePath = "/Portals/0/Hotcakes/Data/products/";
+    let endPoint = "products";
+
+    let data = [];
+    let fileArray = [];
+    let textArray = [];
+    let SkuFromUrl = extractSkuFromUrl();
+    let baseURL = extractBaseUrl();
+    let productListFromApi = @Html.Raw(apiProducts);
+    let productLoadedFromUrl = false;
+    let latestRandomSku = "";
+    let munkadij = 4590;
+    let longDescriptionString = "";
+
+    document.getElementById("main_container").style.backgroundImage = "url(" + baseURL + "Portals/0/Images/modulebg.jpg)";
+    document.getElementById("main_container").style.backgroundSize = "100% 100%";
+
+    function getProduct(productSku) {
+        for (var i = 0; i < productListFromApi['Content'].length; i++) {
+            if (productSku == productListFromApi['Content'][i].Sku) {
+                data = productListFromApi['Content'][i]
+                break;
+            }
+        }
+        if (data.ImageFileMedium) {
+            document.getElementById("designerImage").src = baseURL + imagePath + data.Bvin + "/medium/" + data.ImageFileMedium;
+        }
+        else {
+            document.getElementById("designerImage").src =''
+        }
+        document.getElementById("selectedProductSKUTextBox").value = productSku;
+        loadedProductSitePrice = data.SitePrice
+        loadedProductName = data.ProductName
+    }
+
+    function getAllProducts() {
+        document.getElementById("productComboBox").innerHTML = ''; //törlés
+        for (var i = 0; i < productListFromApi['Content'].length; i++)
+        {
+            if (productListFromApi['Content'][i]['ProductName'].startsWith("Designterv") == false && productListFromApi['Content'][i]['ProductName'] != "PixelPress ajándékkártya") //mert a designterv termékeket már nem akarjuk szerkeszteni
+            {
+                document.getElementById("productComboBox").appendChild(new Option(productListFromApi['Content'][i]['ProductName'], productListFromApi['Content'][i]['Sku']));
+            }
+        };
+        loadProduct();
+    }
+
+    function loadProduct() {
+        if (productLoadedFromUrl == false) {
+            for (var i = 0; i < productListFromApi['Content'].length; i++) {
+                if (SkuFromUrl == productListFromApi['Content'][i].Sku) {
+                    document.getElementById("productComboBox").value = productListFromApi['Content'][i].Sku
+                    productLoadedFromUrl = true;
+                    break;
+                }
+            }
+        }
+        getProduct(document.getElementById("productComboBox").value);
+    }
+    getAllProducts();
+
+
+    function randomSkuGen(length) {
+        let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
+        let result = '';
+        let charactersLength = characters.length;
+        for (let i = 0; i < length; i++) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        }
+        return result;
+    }
+
+    function createProduct() {
+        $(document).ready(function () {
+            ujtermek == "";
+            latestRandomSku = "D-" + randomSkuGen(8);
+            longDescriptionString = "<p><strong>Ez egy ügyfél által tervezett termék!</strong> Az ár tartalmazza az alaptermék árát  és a " + munkadij + " Ft-os munkadíjat! Ez a termék már nem szerkeszthető!</p><p>Alaptermék: " + data.ProductName + " (cikkszám: " + data.Sku + ")</p>📷 Hozzáadott képek:";
+            for (var i = 0; i < document.getElementsByClassName("uploadedFileName").length; i++) {
+                if (document.getElementsByClassName("uploadedFileName")[i].innerHTML != '') {
+                    longDescriptionString += "<br />" + document.getElementsByClassName("uploadedFileName")[i].innerHTML;
+                }
+            }
+            longDescriptionString += "<br /><br />💬 Hozzáadott szövegek:"
+            for (var i = 0; i < textArray.length; i++) {
+                longDescriptionString += "<br />" + textArray[i]
+            }
+            var product = {
+                "ProductName": "Designterv "+latestRandomSku,
+                "Sku": latestRandomSku,
+                "ListPrice": data.SitePrice + munkadij, //az alapárra ráteszi a munkadíjat
+                "SitePrice": data.SitePrice + munkadij,
+                "InventoryMode": 100,
+                "LongDescription": longDescriptionString,
+                "IsSearchable": false,
+                "ImageFileSmall": latestRandomSku+".png",
+                "ImageFileMedium": latestRandomSku + ".png",
+                "imageData": "data:image/jpeg;base64,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"
+            };
+            $.ajax({
+                dataType: "json",
+                url: baseURL + apiPath + endPoint + "?key=" + "@apiKey",
+                data: JSON.stringify(product),
+                type: 'POST',
+                success: function (data) {
+                    console.log("Termék "+latestRandomSku+" létrejött")
+                    //console.log(data)
+                    ujtermek = data;
+                },
+                error: function (jqXHR, textStatus) {
+                    console.log("Hiba: Termék nem jött létre")
+                    //console.log(data)
+                }
+            });
+        });
+    }
+
+    function assignProductOption() {
+        console.log("assignProductOption indul")
+    $(document).ready(function () {
+        $.ajax({
+            dataType: "json", //ide a productoptions után az optionbvin kell, ami alá az alváltozatok (S-M-L) tartoznak: saját: 8FB10A45-A57F-4D41-8E91-78A2A5F25958 rendfejl: 7bcc6f19-b094-44e2-bab4-0c3f1483ed53
+            url: baseURL + apiPath + "/productoptions/" + "7bcc6f19-b094-44e2-bab4-0c3f1483ed53" + "/products/" + ujtermek['Content']['Bvin'] + "?key=" + "@apiKey" + "&generatevariants=0",
+            type: 'POST',
+            success: function (data) {
+                console.log(data)
+            },
+            error: function (jqXHR, textStatus) {
+                console.log(data)
+            }
+        });
+    });
+}
+
+    let ujtermek = "";
+    let eredetikepfajl = "data:image/jpeg;base64,/9j/4QDmRXhpZgAASUkqAAgAAAAFABIBAwABAAAAAQAAADEBAgAcAAAASgAAADIBAgAUAAAAZgAAABMCAwABAAAAAQAAAGmHBAABAAAAegAAAAAAAABBQ0QgU3lzdGVtcyBEaWdpdGFsIEltYWdpbmcAMjAyNTowMzowMSAxNTo0MToxNAAFAACQBwAEAAAAMDIyMJCSAgAEAAAAMTU3AAKgBAABAAAANQIAAAOgBAABAAAA8wAAAAWgBAABAAAAvAAAAAAAAAACAAEAAgAEAAAAUjk4AAIABwAEAAAAMDEwMAAAAAAAAAAA/8AAEQgA8wI1AwEhAAIRAQMRAf/bAIQAAwICAgIBAwICAgMDAwMEBwQEBAQECQYGBQcKCQsLCgkKCgwNEQ4MDBAMCgoPFA8QERITExMLDhUWFRIWERITEgEEBQUGBQYNBwcNGxIPEhsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsbGxsb/8QA1wABAAMAAQUBAAAAAAAAAAAAAAcICQYBAgMEBQoQAAECBAICBhAODQkHBQAAAAABAgMEBQYHEQgJEiE5UVbTExgZIjE4QWFxc3R1gbKztBQXMjQ2V3KEkpOUlaWxNTdCUlNVhZGhtdLU4hYjJGKCo6TD4xUzRGWiwdFDY2SDwgEBAAICAwEAAAAAAAAAAAAAAAMFAgYBBAcIEQEAAQIBBQ0GBQQCAwEAAAAAAQIDBAUGETE1EhQhMjNRcXKBobGy0RMWQVJTkRUiYaLhQmKC8BfBI2PSQ//aAAwDAQACEQMRAD8A1TAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPj3bdlv2Nh/N3TdNQ9BUuS2HJ4/InxNhs3tY3nWIrlzc5qbSdUxqqimmap1Qls2a8RdptW401VTER0zwQjnls9H7h/9FTnEjls9H7h/wDRU5xJ09/Yb5u6fRs/ullv6P7qfU5bPR+4f/RU5xI5bPR+4f8A0VOcSN/Yb5u6fQ90st/R/dT6nLZ6P3D/AOipziRy2ej9w/8Aoqc4kb+w3zd0+h7pZb+j+6n1OWz0fuH/ANFTnEjls9H7h/8ARU5xI39hvm7p9D3Sy39H91Pqctno/cP/AKKnOJHLZ6P3D/6KnOJG/sN83dPoe6WW/o/up9Tls9H7h/8ARU5xI5bPR+4f/RU5xI39hvm7p9D3Sy39H91Pqctno/cP/oqc4k74eldgBFdsW4gMT3VNm2/XCG/sN83dPo4nNLLcf/j+6n1fYpukHgtVoyQ5LEakbJ3QSNEWD46IcypdxUCtwUiUatyE81dtFlplkT6lOxRftXOLOlUYvJWOwPL2ppjo4PvqfRBMqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIi0stz9ur3n55BIMRyNfRPgtsj7Tw/Xo80M5gac+mgAAAAAAAAAA80rOTcjNpHkpqNLxWrmj4T1Y5PCg1OJiKo0TqSHamkVjHZ8SGlOvadmYEP/AIeed6Jhqm9z+ap4FQlOR1j9NtKap8pipZUZYU45zHT9HdnyPLLbWE9dvo9R3gLjBYu5NcW6uGHmedGbmCpwtWMsRuKo0cEap0zo1fDsWawsx6wkxnoiTeHV7U+qREbsokps+RzUL3UJ2Tk7OWRIBfxOl49VTNM6JAcsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAiLSy3P26vefnkEgxHI19E+C2yPtPD9ejzQzmBpz6aAAAAAAAAAAAAItxz9ZUf3cX6mncwfLw1rObZN3s80IypNYq1BuGBV6HU5qnz0s7ZwZmVjOhRYa76OaqKhdHR91l972fHlrdxslYl0UdMoaVSCiNqEBN9ybTYqdnJ3XU2aJ0PCrtuLkfq0aw4xQsPFrDiDdeH1ySlYp0XaV0F3PwnfeRGLzzHJvKiHKiZVTE0zokAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARFpZbn7dXvPzyCQYjka+ifBbZH2nh+vR5oZzA059NAAAAAAAAAAAAEW45+sqP7uL9TTuYPl4a1nNsm72eaETg2R4g5phPjFiFgpifCuvD24I1OmmKiRoOeygTTM/URYfQc39KdRUU1k0WdMqxtIy3WUeYSFQ7zloWymqTEic7HRE24kBy+rbvp6pvVzTbM6Z+Dp4i3pjdQsQCVXgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARFpZbn7dXvPzyCQYjka+ifBbZH2nh+vR5oZzA059NAAAAAAAAAAAAEW45+sqP7uL9TTuYPl4a1nNsm72eaETg2R4gHu0WtVe3LslK7QalMU+oyMVseWmpeIrIkJ6LtOaqdBQa2sGhZpqU7HS34Vg39HgSN9SULnHbTIdWY1Nt7E6kRE9U3wptZolsyeJ0wqLtG4q0AOUQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEWlluft1e8/PIJBiORr6J8FtkfaeH69HmhnMDTn00AAAAAAAAAAAARbjn6yo/u4v1NO5g+XhrWc2ybvZ5oRODZHiAAPco1ZqtvXXKV2h1CPI1CQjNmJaZgPVsSFEauaORU6uZsRoY6VNP0isEPQNciwZe9aFDayqyzedSZb0GzMNPvXdVPuXdZUM6J4XUxNGmndcyxgJVcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARFpZbn7dXvPzyCQYjka+ifBbZH2nh+vR5oZzA059NAAAAAAAAAAAAEW45+sqP7uL9TTuYPl4a1nNsm72eaETg2R4gAAcwwjxSujBnH6lYhWlNLCnabFRXw1XJkzCX1cJ++1ybX5l6KBxMRVGiW4OE2J1t4xaP8AR8Q7VmEfI1WAj1hqub4ERNp8J+85rs0XsZ9U5edhSzGidAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACItLLc/bq95+eQSDEcjX0T4LbI+08P16PNDOYGnPpoAAAAAAAAAAAAi3HP1lR/dxfqadzB8vDWs5tk3ezzQicGyPEAAABcrVu6Qr8PtIp2ElxT2xoF3xESTWI7nZafyyblvJERNivXRhqsS06lZiKdFennAZusAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAERaWW5+3V7z88gkGI5GvonwW2R9p4fr0eaGcwNOfTQAAAAAAAAAAABFuOfrKj+7i/U07mD5eGtZzbJu9nmhE4NkeIAAADyyc3M0+rQJ+SjvgTEtEbGgxWLk5j2rmjkXfRUQ3F0YMYYGOOhXb19OiMWoPgeg6oxv3E3C52J2M9pydZyGdDp4qn8sSlYEqvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACItLLc/bq95+eQSDEcjX0T4LbI+08P16PNDOYGnPpoAAAABzfCbCav4wX/MW7b07JS0xLSqzbnzbnNYrUc1uSbFFXPNyEscotihwitz42LxZ37OCuX6N3TMNQypnRg8lYmcPdpqmdETwaPj2nKLYocIrc+Ni8WOUWxQ4RW58bF4sn/DLvPCr9+snfJV3epyi2KHCK3PjYvFjlFsUOEVufGxeLH4Zd54PfrJ3yVd3qcotihwitz42LxY5RbFDhFbnxsXix+GXeeD36yd8lXd6nKLYocIrc+Ni8WQTpQ6KF+2bKW8lRrVFi+inR1ZyGJEXLYozPPNib5ZZMyNfv4um3TMaZ08/NP6NXzoz8ybRki7M0V/Dm+aP1QJ6RF1fjOmfDf8Asj0iLq/GdM+G/wDZN591MZ81Pf6PCf8AkPJf06/tHqekRdX4zpnw3/sj0iLq/GdM+G/9ke6mM+anv9D/AJDyX9Ov7R6npEXV+M6Z8N/7I9Ii6vxnTPhv/ZHupjPmp7/Q/wCQ8l/Tr+0ep6RF1fjOmfDf+yXU1bMW48PMR7hw4rtRlI1OrkJKhJMhPcqsmYaZPyRUT1TMvgIQ3828XhrVV6qqJimNPx9E1jPfJ2PvU4aiiqJqmIjTo0afu0EBrjawADg+M+LNBwQ0eajiRc0jOzdOpjoTYsKTa10V3JIjWJkjlROi5OqHNMbqdCsvNVMDOBl5/ES/GjmqmBnAy8/iJfjTDdw7W9auc5qpgZwMvP4iX40c1UwM4GXn8RL8aN3BvWrnOaqYGcDLz+Il+NPYk9abgFHmUZNWzeMsxfu1lIL8vAkUbuDe1fOk2x9OrRivuchykniPApU1EXJsGsQHyea72zcmw/6idZCoSFUpMOfpk7LzcrGTZQ40CKkSG9N9HJtKZRMS69dFVGt7AOWAdsR6Qpd0RegxquXwAU0m9aXgdKVSNKRLNvFXQYjoblSBAyVUXL8KeLmqmBnAy8/iJfjTDdw7e9quc5qpgZwMvP4iX40c1UwM4GXn8RL8aN3BvWrnOaqYGcDLz+Il+NPJL61DAaJMI2Pad5QWr0XehYDsvAkUbuDe1fO5/aGsF0XbunGSzr5jUSNEXJG1eSiQG59d6IrE8LifqFcVAui3YdXtqtyNVkYqZsmJKYbGhu7DmqqGUTEoK7dVGt9EHKMAEDaRGmHh7o2X7SrevKg12fj1eTdOQX0+HDc1rUercnbJ7dvNCJuaqYGcDLz+Il+NMJqiHZpsVV06Yk5qpgZwMvP4iX40c1UwM4GXn8RL8aN3DLetXOc1UwM4GXn8RL8aOap4F5+wy8/iJfjRu4N61c77lC1nOjbVJlsKpNuekbJctnM01IjE7PI3OX9BOmHekFgvisjWWFiNRqpMOTP0Kkfkcyn/ANT8n/oOYqiUVdmujhSEDJCAAABEWlluft1e8/PIJBiORr6J8FtkfaeH69HmhnMDTn00AAAAAsdoL9NJVu8r/Kwy9Bs+T+Qh4Lnpterq0gLFpIAAAFUNOz1taHupr/LL7IO0rfb4S1TOzYt7/HzQqWD1p8+AAAAcowuud9m6Qtv3I16tbJT0N0Xb6MNV2L0+CqkGIt+1s1Uc8THc7WEu+wxNu78sxP2lpy1zXwke1c2uTNF3zuPDn1IAAVw1he5R3d22S86hnE6klvjwxuBAuAAAAJHwh0hsXMDrlZP4fXdNykvskdGp0ZyxZOOm86Eu14UyXrnMcDGqmKo0S080WtOWxcf2wbVuCHBtu9Nj6xfE/mJ5UTbWA9eiv9RdtOpn0SzpNE6YVNyibdWgPDN/YqN2t31HKN+fKuezSod1RPGU9I668AAAA5dhxi3iPhJd7a5h5d9Rosyior2wIq8ijdaJDXNr07KKHExFUaJaR6LWsQtrFGpyljYuwpS3bmjqkKWn2LsZGfeu0iLn/unqvUVdivUVOgXO2lTNCaJ0wqbtv2dWh1BkiZja2Hpn7I7wxfLuKMENWtbWeTgBimAAPJLzExKTzJmVjxIMaE7ZMiQ3K1zV30VNtFAtjo86xDFPC2oS1CxGjx7ztlFSGvomJnPyrd+HFX1eX3r8+yhp/hjilY2MGE8tedgVyDUqbMpkqt2okF/VhxGLttenVRf0oS0zp4Fdftbmd1GpywGbqAAERaWW5+3V7z88gkGI5GvonwW2R9p4fr0eaGcwNOfTQAAAACx2gv00lW7yv8rDL0Gz5P5CHguem16urSAsWkgAAAVQ07PW1oe6mv8ALL7IO0rfb4S1TOzYt7/HzQqWD1p8+AAAAANN8KK4ty6NVs1tztk+ZpkFYi770ajXfpRTlh4diKNxerp5pnxfUeDue1w1uvnpifvACB2wrhrC9yju7tsl51DOJ1JLfHhjcCBcAAAAAPNJzs3TqtBn6fNRZaZloiRYMaE9WPhvRc0c1U20VF6prNoJ6XXp5YfOsC+pxiXtRICO5Mq5f7Ul02uSon4Ru0jk6u0vVXLOmeF1sRRuqNPMtoeGb+xUbtbvqJVY/PlXPZpUO6onjKekddeAAAAACKqOzRclQ0m1femPN3NFlcCsUqq6NUocPYW/U5h+bplrU9bRHL0Xoic6q9FEy6KJnlTOiXXv0bqjoX6BMq2Y2th6Z+yO8MXy7ijBDVrW1nk4AYpgAAAJY0cdIq8tHTHODctvx4kxSplzYdXpTn5QpyDnt7XQR6batd1F6yqcxOhjVTFVMxLaXDy/rZxQwZpV92hPtm6VV4CR4L/um/fMcnUc1c0VOoqHIydTTGidAA4CItLLc/bq95+eQSDEcjX0T4LbI+08P16PNDOYGnPpoAAAABY7QX6aSrd5X+Vhl6DZ8n8hDwXPTa9XVpAWLSQAAAKoadnra0PdTX+WX2QdpW+3wlqmdmxb3+PmhUsHrT58AAAAAaA6JlSdUNCSkMc7NZOPMS3YRIiqn6HITEeL5Sp3ONux/dPi+lsi1bvJlif7KfABXrgK4awvco7u7bJedQzidSS3x4Y3AgXAdyQojm5thuVN9EA68hjfgX/BU7XNcxcnNVvZQDoAByTDi/rgwuxwo1/WvMrBqNGmmzMLJckiInqmO32ubm1U3lDiY0xobr4bX3RsTsB6Ff8AQImyka5JQ5uGmeasVyc8xeu12bV66H35v7FRu1u+o7ClmNE6H58q57NKh3VE8ZT0jrrsAAAAAPZpdTqFFuSVrFJm4srOyMZkxLx4Tti+FEaqK1yLvoqIoG4OjDjPL476GlCvxXMSouhrJ1WEz/05uHtRNrqIu05Os5CVieNSlqjc1TDMbWw9M/ZHeGL5dxRgiq1rSzycAMUwAAAAC8WrIx6mLZxwmsEK7Or/ALKuTZTVKR7tqDOMbm5qbyPYi7W+xN80+JqdSrxFOisBk64RFpZbn7dXvPzyCQYjka+ifBbZH2nh+vR5oZzA059NAAAAALHaC/TSVbvK/wArDL0Gz5P5CHguem16urSAsWkgAAAVQ07PW1oe6mv8svsg7St9vhLVM7Ni3v8AHzQqWD1p8+AAAAALy6Fcd0TRLmoSrtQqvGRPCyGpPx45laNGPu9L6PzenTkmx1YAVS/CuGsL3KO7u2yXnUM4nUkt8eGNwIFwGxegNRqPN6q2zY81SZONEd6LzfEgNc5f6TF6qoZ0a3VxPEWE/k7b/wCIqf8AJWf+D51cw5w/uajRKfcNkUKoy0VuxdDmafCiIqeFpKromYUN0wdXrRKLYNQxPwIkosu2QY6ZqVvI5YjFhJtuiS6rtoqJtqxc9pNrLoGeZDVGiVpZubunh1gMU7UTVYYhxq7oq3Dh7OR9nEtmpJMSzVXbbAmEVck6yRGPX+0XWm/sVG7W76ianUqb0aLkvz5Vz2aVDuqJ4ynpEK2C8OrCw+sW/bzv6Fe1n0evMk5WSdLtqMmyYSErnRdkrdki5Z5Jn2DKnWhvTMW5mF++V2wF9pqzPmWB+wepU9GHR4q9LdJz2DForCemS8jpcOE7wOaiKngUl0QrfaV86mulbq5KXQLBn8Q8BUm9jIQ3TE7b0aIsZVhptudLvXnlVE29gueaJtL1DPjJUXJUIqo0SsbNz2lPDrAYp1+NVJiHGlMVLvwumZhfQ9Qk2VmUhqu0kWG5IcTLstez4BpQTU6lXiI0XJZja2Hpn7I7wxfLuKMEdWt3rPJwH3rAlpecx3tuTm4DI0CPV5WHFhxG7Jr2rGaioqdVFQxSzqbfcrtgL7TVmfMsD9gcrrgIqZLg1ZnzLA/YJ9EKj2lfOi3FnV/aPWJFtR0olsQ7Pq6tVYE9R05GxHdTZwfUOTsIi9cyzxuwVvLAXHmbsO85dvJoScllZuFnyGcgKvOxWKvUXLJU6KKiopHVTo4XcsXZq/LU4CDB3H2LNueo2TizRrvpMV0Ocos9BnoLmrkuyhvR2XhyyN9rbrcpc2HlLuOQdspaqycKdgrn9xEYjk/QpJQ6OKjVL6QJHRCItLLc/bq95+eQSDEcjX0T4LbI+08P16PNDOYGnPpoAAAABY7QX6aSrd5X+Vhl6DZ8n8hDwXPTa9XVpAWLSQAAAKiadU/Ddctp0tF5+HAmJhybyOcxE8VS/wA3405Ro7fCWo53VbnI139dz5oVXB6y+fwAAAAF4tCmErNFOdiKm1ErEVU8EOGhYE8dyvw4+70vo/N6NGSbHVgBUr8K4awvco7u7bJedQzidSS3x4Y3AgXAbL6v7co7M99+dRTOjW6mJ4ixIJVc7XNa+ErHtRzXJkqKmaKhhvpU2DI4Z6wW9rQpUFIMhLVJY8pDToMhRmpFa1OsiPy8BhXqdzCz+aYRSCJYLu6qWrRJbS+u2jbNUhz1vpGVu+6HHZl+iIpp7N/YqN2t31E1OpWYjlH58q57NKh3VE8ZT0iFZhoDqlvZ3iP3JIePGMqdaC/yctHwTKp0VEVuSpmimJOmTh7IYZ6x68rcpEBsCQjTTajKwmpk2GyOxIuxTrI5zkTsGFep28NP5phCwIlishq9KvEpOtVtWGx6o2fgzkm9N9Fl3uy/O1DZAlo1K3E8dmNrYemfsjvDF8u4owYVa3cs8nAciw36Ym1u/Un5ZhilnU3+B2FIFN9Z/h3Tbh0HpO/0l2pUrVqUJrYyJzyy8deRvYq72y5GvgOKtSW1Oi5DKcEC3DbvQ5rEWu6sTDuoR3q96Udssqqv4J7oX/4M6NbqYriwmUEquCItLLc/bq95+eQSDEcjX0T4LbI+08P16PNDOYGnPpoAAAABY7QX6aSrd5X+Vhl6DZ8n8hDwXPTa9XVpAWLSQAAAM9NJ69YV6aW9TfJxkiSdJRtNgORc0XkeezVP7au/Mbbmxa3eMqr5o8Xn2fN+LeTqLXxqqj7RE/wicHpbxIAAAABfvREp7pHQop0VzclnJuYmOymz2KeKTQeMZTndY67P90+L6VyHTuMl2I/sp8AFcuQrhrC9yju7tsl51DOJ1JLfHhjcCBcBsvq/tyjsz3351FM6NbqYniLEglVzo5zWQ1e9yI1qZqqrkiIYc6V1+yGJesLva7aTGSNIR6istKxG9CJDgtbCa5Osuwz8JhXqdzCx+aZRMCJYLtaqelRZnTIuqsI1eRyNvcicv9aJHh5foYpqBN/YqN2t31E1OpWYjlH58q57NKh3VE8ZT0iFZhoDqlvZ3iP3JIePGMqdaC/yctHwTKoMf9ZFuqNb72SPkUMK9TtYbjqvgiWSedBV2x1rFg9ebjp/h4ptOS0aldiePDMbWw9M/ZHeGL5dxRgwq1u3Z5OA5Fhv0xNrd+pPyzDFLOpv8DsKQK36wzco7t7dJedQzidSS3x4Y3ggXAbS6CK7LVN4fLn/AMLMp/i45nRrdTE8SE9glVwRFpZbn7dXvPzyCQYjka+ifBbZH2nh+vR5oZzA059NAAAAALHaC/TSVbvK/wArDL0Gz5P5CHguem16urSAsWkgAACItI3GOVwuwfiydPmWrcNXhugyMNF56E1dp0Zd5E6m+uXXM+nvdEiuiPcrnOXNyquaqp6XmzhptYWbs66p7o/2XiWe+Ni/j6cPTPBbjvnhnu0OgNtefAAAAANLsF6G63dFO1qS9mxfDpsKJET+s9Nm79LlOaniGKq3eIrq55nxfUOBt+ywlqjmpiO6AHWd0K4awvco7u7bJedQzidSS3x4Y3AgXAbGaA1YpErqrLNgTVUk4MRvovNj47WuT+kxeoqmdGt1cTxFhP5QUH8dyHyln/k+ZXsRsP7WocSpXHe1CpsrCbsnxZmoQ4aInhXbJVdETKh+l/rC6LWbCqGGOA85GmEn2OlqjcKNWG1IS7Tocui5Kqqm0r1y2l2s+imeRDVOmVpZt+zp4dYDFO1A1V2HkaiaMNyYizkBWPuWotlZVyptugS6KiqnWWI96f2S7U39io3a3fUTU6lTenTcl+fKuezSod1RPGU9IhWwaA6pb2d4j9ySHjxjKnWgv8nLR8EyqDH/AFkW6o1vvZIeRQwr1O1huOq+CJZJ20Gl2OtWw/689GT/AA8U2qJaNSuxPHhmNrYemfsjvDF8u4owYVa3bs8nAciw36Ym1u/Un5ZhilnU3+B2FIFb9YZuUd29ukvOoZxOpJb48MbwQLgNotAxc9Uvh+v/AMeb89jmdGt1MTxIT8CVXBEWlluft1e8/PIJBiORr6J8FtkfaeH69HmhnMDTn00AAAAAsdoL9NJVu8r/ACsMvQbPk/kIeC56bXq6tICxaSAARFjHpHWdhdTI1Pk48Kr3ArVSHIwYmbYS9RYrk9SnW6K/pLDAYK5j78WqO2eaFRlbKdrJWEqv3OyOefhH+/BRO8bxuC+7/mrluWedNTs07NVXaaxvUY1Oo1Ooh8U9jtW6bNuLdGqOB83X71eJu1Xbk6aqp0z2gJUIAAAH3rCtyLd2NNEtqC1XLUZ6FAd1mq5NkvgbmpFer9naqr5omXYw9qb16i3H9UxH3lqFBhQ4EoyBCajWQ2oxqJ1ETaQ7zwzW+pYjRGiAByFcNYXuUd3dtkvOoZxOpJb48MbgQLgO9saMxmxZFeibyOVAOvoiY/DxPhqdj3viLm9yuXrrmB0AA5Dh9YtfxMxpo9iWvKumKlWZpkrBaibTc1557t5rUzcq7yKHEzojS3XwxsCj4W6P9Bw+oLMpKhyTJVjstuI5E5969dzlc5eupyKb+xUbtbvqOwpZnTOl+fKuezSod1RPGU9I667DQHVLezvEfuSQ8eMZU60F/k5aPgmVQY/6yLdUa33skPIoYV6naw3HVfBEsk56D7tjrVMPevUIif3EQ2tJaNSuxPHhmNrYemfsjvDF8u4owYVa3bs8nAciw36Ym1u/Un5ZhilnU3+B2FIFb9YZuUd29ukvOoZxOpJb48MbwQLgNn9Adc9UlYHaZ1P8dMGdGt1MTxI6VgQSq4IM03K6ttasG9K0kskdZb0D/Nq7Y7LZT0u3o5dcjuU7uiaeeHcwN/e2LtXtGnc1RP2nSyl9PKJwcb8p/hHp5RODjflP8JSfh0fM9Y99avo9/wDB6eUTg435T/CPTyicHG/Kf4R+HR8x761fR7/4PTyicHG/Kf4R6eUTg435T/CPw6PmPfWr6Pf/AAenlE4ON+U/wj08onBxvyn+Efh0fMe+tX0e/wDhNmifpQrZmP1RqLrOSa5LS3wdgk7sMs4jFzz2C7xbDl7G+1wvzl/pm/ZEzc3zg4ue00cM/D+Xz9nvn3uMs1RNj+mn+r9Og5exvtcL85f6Y5exvtcL85f6Zee6n/t7v5aL7/f+j938HL2N9rhfnL/TPSn9OqsOgqlLw+k4T+o6PPOeieBGp9ZnTmrTp/Nd4Oj+WFef1W5/JY4f1q/hGF7aTWLd7SkSTjV5KXJxEydL01nIc03lfmrl/ORU974kVYkRyuc5c1VVzVVNrwWBsYC3uLMdM/GWg5Syrisq3fa4irTzR8I6IdAd9UgAAAABYnQtsp1Zx5nbxmYOctQpZWQnKm1yeLmifmajvzoVGWLvssn3Kv00ffgbFm5Y3xlezTzTp+3D/wBLtA8efRgABXDWF7lHd3bZLzqGcTqSW+PDG4EC4AAAAAeWVlZmeqcKSkpeJMTEd6Q4UKE1XPe5VyRqIm2qqvUNYNBDRCdglYq4j39JM/lrWoGxhy7kzWly7tvkfbHbWy3tpu/nnTGmXWxFe5o0c63Z4Zv7FRu1u+olVj8+Vc9mlQ7qieMp6R114GgOqW9neI/ckh48Yyp1oL/Jy0fBMqgx/wBZFuqNb72SHkUMK9TtYbjqvgiWSb9CV2x1p+Hi/wDMnp/cxDbElo1K7FcaGY2th6Z+yO8MXy7ijBhVrduzycByLDfpibW79SflmGKWdTf4HYUgVv1hm5R3b26S86hnE6klvjwxvBAuA2d0A1z1R9gdrnk/x8wZ0a3UxPEjpWDBKrgrvrBNyHv38nfrGWOJ1M7fHjpYzggXIAAAACR8CvtrzfcLvHaTsesZs7Ojpl86Z+bbq6tPgA2hoAAAAAAAAAADqiKrkREzVdpEQ0V0dsPfS60YKbT5qDsKjUE9Hz2abaRHomTV9y3Yp2UU1DOi9uMLTb+afD/YeiZjYb2mOrvTqpp75n0iUmg82e1AAFcNYXuUd3dtkvOoZxOpJb48MbgQLgAAACQsJsAsWcbbmZTsPLPnJ+HskbFnnt5FKQOu+K7nU7CZr1hrY1VRTGmWnWivoK2TgI6Bd10RoNyXojc2zTof9GkFVNtIDV+6/rrt7yNLSE8RohU3K5uVaQ8M39io3a3fUco358q57NKh3VE8ZT0jrrwNAdUt7O8R+5JDx4xlTrQX+Tlo+CZVBj/rIt1RrfeyQ8ihhXqdrDcdV8ESyTZoVO2OtMw6X/mqp/dPNtCWjUrsVxoZja2Hpn7I7wxfLuKMGFWt27PJwHIsN+mJtbv1J+WYYpZ1N/gdhSBW/WGblHdvbpLzqGcTqSW+PDG8EC4DZrV/LnqirBX+rUE+kJkzo1upieJHSsMCVXBXfWCbkPfv5O/WMscTqZ2+PHSxnBAuQAAAAEj4FfbXm+4XeO0nY9YzZ2dHTL50z823V1afABtDQAAAAAAAAAAEy6LuFjsQ8f4NTqEvs6NQHNm5lXJzsSJn/Nw/CqZr1m9cv71DzLOXEe1xkW4/pjvnh9HuGZOE9hk6b06657o4PHS6g1RvwABwXGvCSi446OVSw1uGozkjI1N0J0SPJ7HkreRxGvTLZIqdFqdQOaZ3M6VXeZS4N+2FeHwpfixzKXBv2wrw+FL8WYbiHa31VzHMpcG/bCvD4UvxY5lLg37YV4fCl+LG4g31VzHMpcG/bCvD4UvxZ7UjqrMDIEwjp68rxmm5+p5PAh5+FIQ3EG+auZJtk6BOjBZE5Dm4OHzazMw1RWxaxMvmkz39gq7D/pJ7ptLplGokKm0eny0jKQG7GFAloTYcNibyNRERDKIiEFdyqvW9oHKMOyKxIss+Eq5I9qtz7IFK5vVW4OzdVjTb8QLvR0aI6IqI6XyRVXP8GeLmUuDfthXh8KX4sw3EO3vmrmOZS4N+2FeHwpfiyaNG3RIsrRmq9dnLTuOs1R1ehwYUZKgsPJiQ1cqbHYNTo7NejvHMUxDGu/VXTuZhOgMnWCq+P+gJZ+P+klOYk1i/6zSpqcl4Mu6WlpaG+G1IbEai5u29vI4mNKS3XNudKOeZN4de21cfyOCOZN4de21cfyOCYbh2N9TzOX4SauCyMJNI+g4kU3EiuT8zQZr0VDlo8rCbDirsVbkqptp6ot+ZxGhBcuTcnTKANI7Q4sXSWxApNxXXc1bpkakSbpKEyQWHsXtV6uzXZtXbzUiLmUuDfthXh8KX4sxmmJSUX6qKdEQcylwb9sK8PhS/FnvULVd4Q0C96dXZa/rtiRqdNwpuGx6wNi50N6ORFyh9DNBuIZb5q5lzgZuoHAMdcIabjroz1PDOr1iZpcrU3wXvmpZjXxGcjiNemSO2ttW5BlTO5mJVQ5k3h17bVx/I4I5k3h17bVx/I4JHuHa31PMcybw69tq4/kcEtngbhPTsDtFuiYW0mrTNTlaJyfkc1MMayJE5LHiRlzRu1tLEVOwhlFOhHcvTcjRoc7Bk64V31gm5D37+Tv1jLHE6mdvjx0sZwQLkAAAABI+BX215vuF3jtJ2PWM2dnR0y+dM/Nt1dWnwAbQ0AAAAAAAAAD36DQ6pct4ydAoso+Znp6KkGBCb0XOX/t1VUwrrpt0zVVqhJbt1Xa4oojTMzojtaQYRYa03CvBOTtiS2D5hE5NOzCJtx46pzy9hOgnWRDmh4nib84m/Vdn4zMvp3A4WnBYW3h6dVMRADrO6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFd9YJuQ9+/k79YyxxOpnb48dLGcEC5AAAAASPgV9teb7hd47Sdj1jNnZ0dMvnTPzbdXVp8AG0NAAAAAAAAAHVjHRIqMY1XOcuSIiZqql4dF7AX+QNtNva6pREuCoQv5iC9NuSgr1Pdu6u8m1vmsZxYve+D9nGuvg7Pj6dreMzsn78yj7aqPy2+Ht+Hr2LAg8ue7AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFd9YJuQ9+/k79YyxxOpnb48dLGcEC5AAAAASPgV9teb7hd47Sdj1jNnZ0dMvnTPzbdXVp8AG0NAAAAAAAAOrGOiRUYxquc5ckREzVVAuFo06NK0R8tiDiFIp6PySLTqdFTP0PvRIiff7ydTort9C0B5FlnG7+xc1U8WOCPXtfQ+beS/wvJ9NNUfnq4au34dkd+kBSNnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK76wTch79/J36xljidTO3x46WM4IFyAAAAAkfAr7a833C7x2k7HrGbOzo6ZfOmfm26urT4ANoaAAAAAAAD36FQKzc10QKLQKbHnp6ZdsYUGC3ZOX/AMJ11Lp4DaLtMsJ0C6r2bAqNwJk+DATnoEkvW++f1+gnU3zVs4MoxhbHsaJ/PV3R/Le80cjTj8Vvm7H/AI6O+r4R2a57FgQeYPcwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK76wTch79/J36xljidTO3x46WM4IFyAAAAAkfAr7a833C7x2k7HrGbOzo6ZfOmfm26urT4ANoaAAAAAA6oiucjWoqqu0iJ1SZcK9F2/sQ4sKo1WA+gUZ2TlmZpipFit/8Abh9FeyuSdkrsoY+1k+zNyvX8I55XOSclX8r4mLNrV8Z+ER/upcnDbCOycK7c9BWvTESYiNRJidjc/MR167uonWTJDmh5DicRcxV2btyeGX0RgsHZwGHpw9mNFNP+6emQHWd0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACu+sE3Ie/fyd+sZY4nUzt8eOljOCBcgAAAAJHwK+2vN9wu8dpOx6xmzs6OmXzpn5turq0+ADaGgAAAD79t2Bet3zaQbZtapVFXbWygy7lYnZdlknhUmqydC2/KxGhzF5VOUoUsuSuhMd6ImFTeyTnU/OpRZQyzhsBExp3VfNH/AHzNpyPm3jMq1RVo3Nv5p/65/BY7D3R3www5WHNU6iNn6izb9HT+UaIi77Uy2LfAhJh5jjMZex12bl2eHujoe5ZOybhsl2Is4eNEfGfjM88gOkswAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4bi/hXbuNejrVsMrsmqhL0qs8h9ERZCI2HHbyKMyM3Yuc1yJz0NuebV2s+yHMTuZ0q1cyv0deE9//OUr+7DmV+jrwnv/AOcpX92MNxDs75r/AEOZX6OvCe//AJylf3Ycyv0deE9//OUr+7DcQb5r/Q5lfo68J7/+cpX92HMr9HXhPf8A85Sv7sNxBvmv9DmV+jrwnv8A+cpX92HMr9HXhPf/AM5Sv7sNxBvmv9H2bW1bWBFoV6JUaVcl8OixISwl5NPyzkyzRepLpvHKeUgwo4Q3Z8rl+INhwOW8Tk+z7G3ETH66fWGl5WzaweWcVOKv1VRVMRHBMaODppk5SDCjhDdnyuX4gcpBhRwhuz5XL8Qd/wB6Mb8tP2n1VHuLkz56/vT/APJykGFHCG7PlcvxB3w9CTCVi5urN0xOs6cg/wDaChxOdGN+Wn7T6uYzFyZH9df3p/8Al9im6IOCshFR8al1Gey6kzPOyXwN2Jzah4MYVW5EbEpFhUeFEZ0Ij5dIr08Ls1K3EZax2JjRVXoj9OBc4PNnJWCndU291PPVw/x3OYwoUKBASFAhMhsbtI1iZIngO8pdbZoiIjRAA5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB/9k="
+
+    //var byteArray = Base64Binary.decodeArrayBuffer(eredetikepfajl);
+    var byteArray = fileArray[0];
+
+
+    function mainImageUpload() {
+        $(document).ready(function () {
+            //var product = {
+            //    "imageData": byteArray
+            //};
+            $.ajax({
+                dataType: "json",
+                //fullApiUri + "productmainimage/" + Enc(productBvin) + "?key=" + Enc(key) + "&filename=" + Enc(fileName), imageData.ObjectToJson());
+                url: baseURL + apiPath + "productmainimage/" + ujtermek.Content.Bvin + "?key=" + "@apiKey" + "&filename=" + ujtermek.Content.ImageFileMedium,
+                data: byteArray,
+                type: 'POST',
+                success: function (data) {
+                    console.log("Kép feltöltve: "+latestRandomSku)
+                    console.log(data)
+                },
+                error: function (jqXHR, textStatus) {
+                    console.log("Hiba: Termékkép feltöltése sikertelen")
+                    console.log(data)
+                }
+            });
+        });
+    }
+
+    function createProductApi() {
+        fetch('/DesktopModules/MVC/PixelPress_Designer/API/Product/CreateProduct', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ProductName: "Teszt termék",
+                Sku: "TEST123",
+                ListPrice: 100.00,
+                SitePrice: 90.00,
+                LongDescription: "Ez egy teszt termék.",
+                IsSearchable: true
+            })
+        })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error("Hiba történt:", error));
+    }
+
+    function pushImage() {
+
+    };
+
+    function overlayOn() {
+        document.getElementById("overlay").style.visibility = "visible";
+    }
+
+    function overlayOff() {
+        document.getElementById("overlay").style.visibility = "hidden";
+        document.getElementById("overlay_whitebox").style.visibility = "hidden";
+        document.getElementById("overlay").style.opacity = 0;
+        document.getElementById("overlay_whitebox").style.opacity = 0;
+        document.getElementById("main_container").style.filter = "blur(0px)";
+        document.getElementById("main_container").style.transition = "filter 0s, blur 0s, opacity 0s";
+        document.getElementById("overlay_whitebox").style.filter = "blur(20px)";
+        document.getElementById("qrcode").style.visibility = "hidden";
+        document.getElementById("qrcode").style.filter = "blur(20px)";
+        document.getElementById("qrcode").style.opacity= 0;
+        document.getElementById("qrcode").style.transition = "blur 0s, opacity 0s";
+    }
+
+    ///////////////////////////// movable
+
+    window.onload = function () {
+        initDragElement();
+        initResizeElement();
+    };
+
+
+    function initDragElement() {
+        var pos1 = 0,
+            pos2 = 0,
+            pos3 = 0,
+            pos4 = 0;
+        var popups = document.getElementsByClassName("popup");
+        var elmnt = null;
+        var currentZIndex = 100; //TODO reset z index when a threshold is passed
+
+        for (var i = 0; i < popups.length; i++) {
+            var popup = popups[i];
+            var header = getHeader(popup);
+
+            popup.onmousedown = function () {
+                this.style.zIndex = "" + ++currentZIndex;
+            };
+
+            if (header) {
+                header.parentPopup = popup;
+                header.onmousedown = dragMouseDown;
+            }
+        }
+
+        function dragMouseDown(e) {
+            elmnt = this.parentPopup;
+            elmnt.style.zIndex = "" + ++currentZIndex;
+
+            e = e || window.event;
+            // get the mouse cursor position at startup:
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            // call a function whenever the cursor moves:
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            if (!elmnt) {
+                return;
+            }
+
+            e = e || window.event;
+            // calculate the new cursor position:
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            // set the element's new position:
+            elmnt.style.top = elmnt.offsetTop - pos2 + "px";
+            elmnt.style.left = elmnt.offsetLeft - pos1 + "px";
+        }
+
+        function closeDragElement() {
+            /* stop moving when mouse button is released:*/
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+
+        function getHeader(element) {
+            var headerItems = element.getElementsByClassName("popup-header");
+
+            if (headerItems.length === 1) {
+                return headerItems[0];
+            }
+
+            return null;
+        }
+    }
+
+    function initResizeElement() {
+        var popups = document.getElementsByClassName("popup");
+        var element = null;
+        var startX, startY, startWidth, startHeight;
+
+        for (var i = 0; i < popups.length; i++) {
+            var p = popups[i];
+
+            var right = document.createElement("div");
+            right.className = "resizer-right";
+            p.appendChild(right);
+            right.addEventListener("mousedown", initDrag, false);
+            right.parentPopup = p;
+
+            var bottom = document.createElement("div");
+            bottom.className = "resizer-bottom";
+            p.appendChild(bottom);
+            bottom.addEventListener("mousedown", initDrag, false);
+            bottom.parentPopup = p;
+
+            var both = document.createElement("div");
+            both.className = "resizer-both";
+            p.appendChild(both);
+            both.addEventListener("mousedown", initDrag, false);
+            both.parentPopup = p;
+        }
+
+        function initDrag(e) {
+            element = this.parentPopup;
+
+            startX = e.clientX;
+            startY = e.clientY;
+            startWidth = parseInt(
+                document.defaultView.getComputedStyle(element).width,
+                10
+            );
+            startHeight = parseInt(
+                document.defaultView.getComputedStyle(element).height,
+                10
+            );
+            document.documentElement.addEventListener("mousemove", doDrag, false);
+            document.documentElement.addEventListener("mouseup", stopDrag, false);
+        }
+
+        function doDrag(e) {
+            element.style.width = startWidth + e.clientX - startX + "px";
+            element.style.height = startHeight + e.clientY - startY + "px";
+        }
+
+        function stopDrag() {
+            document.documentElement.removeEventListener("mousemove", doDrag, false);
+            document.documentElement.removeEventListener("mouseup", stopDrag, false);
+        }
+    }
+
+    // PHP
+
+    function uploadPHP() {
+        const formData = new FormData();
+        formData.append("image", newImgBlob, "generated_image.png");
+        formData.append("product_bvin", ujtermek['Content']['Bvin']);
+        formData.append("product_sku", ujtermek['Content']['Sku']);
+
+        //fetch(baseURL.slice(0, -1) + ":8060/upload.php", { //saját dnndev.me-s cucc ami nem a 8080-as porton működik ezért máshogy kell parseolni az urlt
+        fetch(baseURL.slice(0, -6)+":8060/upload.php",{ //rendfejl10000, itt le kell vágni a 8080-at a végéről
+            method: "POST",
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Kép feltöltve:", data);
+            })
+            .catch(error => {
+                console.error("Hiba történt a kép feltöltése során:", error);
+            });
+    }
+
+
+</script>
