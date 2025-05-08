@@ -1,0 +1,2 @@
+C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\ItemControllerTests\obj\Debug\ItemControllerTests.csproj.AssemblyReference.cache
+C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\ItemControllerTests\obj\Debug\ItemControllerTests.csproj.CoreCompileInputs.cache
