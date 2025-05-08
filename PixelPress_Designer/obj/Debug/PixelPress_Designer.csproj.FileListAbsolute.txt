@@ -1,5 +1,0 @@
-C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\PixelPress_Designer\obj\Debug\PixelPress_Designer.csproj.AssemblyReference.cache
-C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\PixelPress_Designer\obj\Debug\PixelPress_DesignerPixelPress_Designer.App_LocalResources.Settings.resources
-C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\PixelPress_Designer\obj\Debug\PixelPress_DesignerPixelPress_Designer.Properties.Resources.resources
-C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\PixelPress_Designer\obj\Debug\PixelPress_Designer.csproj.GenerateResource.cache
-C:\Users\bekoo\OneDrive\Dokumentumok\Corvinus\Modul_Unit\PixelPress_Designer\obj\Debug\PixelPress_Designer.csproj.CoreCompileInputs.cache
